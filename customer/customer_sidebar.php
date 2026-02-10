@@ -1,197 +1,150 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Karobar Dashboard</title>
+<style>
+    :root {
+        --pb-indigo: #4f46e5;
+        --pb-dark: #0f172a;
+        --pb-bg: #f8fafc;
+    }
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet" />
-
-  <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #e6effc;
-      margin-left: 280px;
+        font-family: 'Inter', sans-serif;
+        background-color: var(--pb-bg);
+        padding-top: 75px; /* Space for fixed navbar */
     }
 
-    nav.sidebar {
-      width: 280px;
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
-      background-color: #212529;
-      color: white;
-      padding: 1rem;
-      z-index: 1000;
-      overflow-y: auto;
+    .navbar-customer {
+        background: white;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 0.7rem 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
     }
 
-    .nav-link {
-      font-size: 0.95rem;
-      color: white;
-      padding: 0.55rem 1rem;
-      border-radius: 0.35rem;
-      transition: background-color 0.25s ease;
+    .navbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 1.4rem;
+        color: var(--pb-indigo) !important;
+        letter-spacing: -0.5px;
     }
 
-    .nav-link i {
-      width: 22px;
-      text-align: center;
+    .navbar-brand img {
+        height: 35px;
+        width: auto;
+        border-radius: 6px;
     }
 
-    .nav-link:hover,
-    .nav-link.active {
-      background-color: #0d6efd;
+    /* Central Search Bar */
+    .nav-search-container {
+        position: relative;
+        width: 100%;
+        max-width: 400px;
+        margin: 0 2rem;
     }
 
-    .navbar-toggler {
-      display: none;
-      position: fixed;
-      top: 1rem;
-      left: 1rem;
-      z-index: 1100;
-      border: 1px solid #0d6efd;
-      background-color: #fff;
-      border-radius: 6px;
-      padding: 0.45rem;
+    .nav-search-container input {
+        background: #f1f5f9;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 0.6rem 1rem 0.6rem 2.8rem;
+        font-size: 0.9rem;
+        width: 100%;
+        transition: all 0.3s ease;
     }
 
-    .navbar-toggler-icon {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(0,0,0,0.75)' stroke-width='2' stroke-linecap='round' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-      width: 1.4em;
-      height: 1.4em;
+    .nav-search-container i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
     }
 
-    @media (max-width: 992px) {
-      body {
-        margin-left: 0 !important;
-      }
-      nav.sidebar {
-        display: none !important;
-      }
-      .navbar-toggler {
-        display: block;
-      }
+    .nav-search-container input:focus {
+        background: white;
+        border-color: var(--pb-indigo);
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        outline: none;
     }
 
-    .offcanvas {
-      width: 280px;
-      background-color: #212529;
+    /* Nav Links Styling */
+    .nav-link-custom {
+        color: #475569 !important;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem !important;
+        border-radius: 10px;
+        transition: 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .offcanvas .nav-link {
-      color: white;
+    .nav-link-custom:hover {
+        color: var(--pb-indigo) !important;
+        background: #f5f7ff;
     }
 
-    .offcanvas .nav-link:hover {
-      background-color: #0d6efd;
+    .nav-link-custom.active {
+        color: var(--pb-indigo) !important;
+        background: #eef2ff;
     }
-  </style>
-</head>
-<body>
 
-<!-- Mobile Toggle -->
-<button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas">
-  <span class="navbar-toggler-icon"></span>
-</button>
+    .logout-link {
+        color: #ef4444 !important;
+        border: 1px solid #fee2e2;
+        background: #fef2f2;
+    }
 
-<!-- Desktop Sidebar -->
-<nav class="sidebar d-flex flex-column">
-  <a href="dashboard.php" class="d-flex align-items-center mb-3 text-white text-decoration-none">
-    <i class="fas fa-store me-2"></i>
-    <span class="fs-5 fw-semibold">Karobar Manager</span>
-  </a>
-  <hr>
+    .logout-link:hover {
+        background: #fee2e2;
+    }
 
-  <ul class="nav nav-pills flex-column gap-1">
+    @media (max-width: 991px) {
+        .nav-search-container { margin: 1rem 0; max-width: 100%; }
+        .navbar-collapse { background: white; padding: 1rem; border-radius: 15px; margin-top: 10px; border: 1px solid #eee; }
+    }
+</style>
 
-    <li class="nav-item">
-      <a class="nav-link" href="dashboard.php">
-        <i class="fas fa-gauge-high"></i> Dashboard
-      </a>
-    </li>
+<nav class="navbar navbar-expand-lg navbar-customer fixed-top">
+    <div class="container">
+        <a class="navbar-brand" href="dashboard.php">
+            <img src="../Logo.jpg" alt="PakBazar Logo">
+            <span>PakBazar</span>
+        </a>
 
-    <li class="nav-item">
-      <a class="nav-link" href="wishlist.php">
-        <i class="fas fa-heart"></i> Wishlist
-      </a>
-    </li>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#customerNav">
+            <i class="fas fa-bars"></i>
+        </button>
 
-    <li class="nav-item">
-      <a class="nav-link" href="my_orders.php">
-        <i class="fas fa-bag-shopping"></i> Orders
-      </a>
-    </li>
+        <div class="collapse navbar-collapse" id="customerNav">
+            <form class="nav-search-container mx-auto" action="dashboard.php" method="GET">
+                <i class="fas fa-search"></i>
+                <input type="text" id="pSearch" placeholder="Search products in PakBazar..." onkeyup="filterProducts()">
+            </form>
 
-    <li class="nav-item">
-      <a class="nav-link" href="notifications.php">
-        <i class="fas fa-bell"></i> Notifications
-      </a>
-    </li>
-
-    <hr class="text-secondary">
-
-    <li class="nav-item">
-      <a class="nav-link text-danger" href="logout.php">
-        <i class="fas fa-right-from-bracket"></i> Logout
-      </a>
-    </li>
-
-  </ul>
+            <ul class="navbar-nav align-items-center gap-1">
+                <li class="nav-item">
+                    <a class="nav-link-custom <?= (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'active' : '' ?>" href="dashboard.php">
+                        <i class="fas fa-th-large"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link-custom <?= (basename($_SERVER['PHP_SELF']) == 'wishlist.php') ? 'active' : '' ?>" href="wishlist.php">
+                        <i class="fas fa-heart"></i> Wishlist
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link-custom <?= (basename($_SERVER['PHP_SELF']) == 'my_orders.php') ? 'active' : '' ?>" href="my_orders.php">
+                        <i class="fas fa-shopping-bag"></i> Orders
+                    </a>
+                </li>
+                <li class="nav-item ms-lg-2">
+                    <a class="nav-link-custom logout-link" href="logout.php">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
 </nav>
-
-<!-- Mobile Offcanvas Sidebar -->
-<div class="offcanvas offcanvas-start text-white" tabindex="-1" id="sidebarOffcanvas">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title">
-      <i class="fas fa-store me-2"></i> Karobar Manager
-    </h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
-  </div>
-
-  <div class="offcanvas-body">
-    <ul class="nav nav-pills flex-column gap-1">
-
-      <li class="nav-item">
-        <a class="nav-link" href="dashboard.php">
-          <i class="fas fa-gauge-high"></i> Dashboard
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link" href="wishlist.php">
-          <i class="fas fa-heart"></i> Wishlist
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link" href="my_orders.php">
-          <i class="fas fa-bag-shopping"></i> Orders
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link" href="notifications.php">
-          <i class="fas fa-bell"></i> Notifications
-        </a>
-      </li>
-
-      <hr class="text-secondary">
-
-      <li class="nav-item">
-        <a class="nav-link text-danger" href="logout.php">
-          <i class="fas fa-right-from-bracket"></i> Logout
-        </a>
-      </li>
-
-    </ul>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>

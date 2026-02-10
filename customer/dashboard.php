@@ -10,27 +10,27 @@ if (!isset($_SESSION["logged_in"]) || $_SESSION["role"] !== "customer") {
 
 $customer_id = $_SESSION["user_id"];
 
-// 2. Fetch Customer basic info
+// 2. Fetch Customer Info
 $stmt = $conn->prepare("SELECT name, city FROM users WHERE id = ?");
 $stmt->bind_param("i", $customer_id);
 $stmt->execute();
 $user_data = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-// 3. Get IDs of products already in cart (for button toggle)
-$cart_stmt = $conn->prepare("SELECT product_id FROM cart WHERE customer_id = ?");
-$cart_stmt->bind_param("i", $customer_id);
-$cart_stmt->execute();
-$cart_result = $cart_stmt->get_result();
+// 3. Stats Summary
+$order_count = $conn->query("SELECT COUNT(*) as total FROM orders WHERE customer_id = $customer_id")->fetch_assoc()['total'];
+$cart_count = $conn->query("SELECT COUNT(*) as total FROM cart WHERE customer_id = $customer_id")->fetch_assoc()['total'];
+
+// 4. Products in Cart
 $in_cart = [];
-while ($row = $cart_result->fetch_assoc()) {
-    $in_cart[] = $row['product_id'];
-}
-$cart_stmt->close();
+$cart_res = $conn->query("SELECT product_id FROM cart WHERE customer_id = $customer_id");
+while($r = $cart_res->fetch_assoc()) { $in_cart[] = $r['product_id']; }
 
-// 4. Fetch Categories & Products
+// 5. Fetch Data for Slider (Latest 5 Products)
+$slider_products = $conn->query("SELECT p.*, c.name as cat_name FROM products p JOIN categories c ON p.category_id = c.id ORDER BY p.created_at DESC LIMIT 5")->fetch_all(MYSQLI_ASSOC);
+
+// 6. Fetch All Categories & All Products
 $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
-
 $products_query = "
     SELECT p.*, c.name as cat_name,
            (SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id) as review_count,
@@ -50,118 +50,129 @@ $products = $conn->query($products_query)->fetch_all(MYSQLI_ASSOC);
     <title>Customer Dashboard - PakBazar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
-        body { background: #f5f7fa; font-family: 'Segoe UI', sans-serif; }
-        .product-card { border: none; border-radius: 16px; overflow: hidden; transition: all 0.25s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
-        .product-card:hover { transform: translateY(-6px); box-shadow: 0 12px 25px rgba(0,0,0,0.12); }
-        .product-img { height: 200px; object-fit: cover; }
-        .action-btn { font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 50px; }
-        .rating-stars { color: #ffc107; }
-        .wishlist-btn { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        :root { --pb-indigo: #4f46e5; --pb-bg: #f8fafc; }
+        body { background: var(--pb-bg); font-family: 'Inter', sans-serif; color: #1e293b; }
+        
+        /* Slider Styling */
+        .slider-section { border-radius: 25px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 40px; }
+        .carousel-item { height: 350px; background: #0f172a; }
+        .slider-content { height: 100%; display: flex; align-items: center; padding: 0 10%; color: white; background: linear-gradient(90deg, rgba(15,23,42,1) 0%, rgba(79,70,229,0.8) 100%); }
+        .slider-img { height: 280px; width: auto; object-fit: contain; border-radius: 15px; }
+
+        /* Stats & Cards */
+        .stat-card { border: none; border-radius: 15px; background: white; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.3s; }
+        .product-card { border: none; border-radius: 18px; background: white; transition: 0.3s; border: 1px solid #edf2f7; overflow: hidden; height: 100%; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+        .product-img { height: 180px; width: 100%; object-fit: cover; }
+        .badge-cat { font-size: 0.7rem; background: #eef2ff; color: var(--pb-indigo); padding: 4px 10px; border-radius: 50px; font-weight: 700; }
+        .price-text { font-size: 1.2rem; font-weight: 800; color: var(--pb-indigo); }
     </style>
 </head>
 <body>
 
 <?php include('customer_sidebar.php'); ?>
 
-<div class="container py-4" style="max-width:1400px;">
-    <div class="row mb-4 align-items-center">
-        <div class="col-md-8">
-            <h2 class="fw-bold text-dark mb-1">Welcome, <?= htmlspecialchars($user_data['name'] ?? 'Customer') ?>!</h2>
-            <p class="text-muted mb-0"><i class="fas fa-map-marker-alt me-2"></i> Shipping to: <?= htmlspecialchars($user_data['city'] ?? 'Your city') ?></p>
+<div class="container py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-800 mb-0">Welcome, <?= htmlspecialchars($user_data['name']) ?>!</h2>
+            <p class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i> Shipping to <?= htmlspecialchars($user_data['city']) ?></p>
         </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-            <a href="wishlist.php" class="btn btn-outline-danger rounded-pill px-4"><i class="fas fa-heart me-2"></i> Wishlist</a>
-        </div>
-    </div>
-
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-5">
-                    <input type="text" id="pSearch" class="form-control form-control-lg" placeholder="Search products..." onkeyup="filterProducts()">
-                </div>
-                <div class="col-md-4">
-                    <select id="cFilter" class="form-select form-select-lg" onchange="filterProducts()">
-                        <option value="all">All Categories</option>
-                        <?php foreach($categories as $cat): ?>
-                            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <a href="cart.php" class="btn btn-primary w-100 h-100 d-flex align-items-center justify-content-center">
-                        <i class="fas fa-shopping-cart me-2"></i> View Cart
-                    </a>
-                </div>
+        <div class="d-flex gap-2">
+            <div class="stat-card py-2 px-3 d-flex align-items-center">
+                <i class="fas fa-shopping-bag text-primary me-2"></i>
+                <span class="fw-bold"><?= $order_count ?> Orders</span>
             </div>
         </div>
     </div>
 
-    <div class="row g-4" id="productGrid">
-        <?php if(empty($products)): ?>
-            <div class="col-12 text-center py-5"><h4 class="text-muted">No products available.</h4></div>
-        <?php else: ?>
-            <?php foreach($products as $p): 
-                $is_in_cart = in_array($p['id'], $in_cart);
-                $avg = $p['avg_rating'] ? round($p['avg_rating'], 1) : null;
-            ?>
-            <div class="col-6 col-md-4 col-lg-3 product-item" data-name="<?= strtolower(htmlspecialchars($p['name'])) ?>" data-cat="<?= htmlspecialchars($p['cat_name']) ?>">
-                <div class="card h-100 product-card position-relative">
-                    <button class="wishlist-btn" onclick="toggleWishlist(<?= $p['id'] ?>)"><i class="far fa-heart"></i></button>
-                    <img src="../uploads/<?= htmlspecialchars($p['image'] ?? 'default-product.jpg') ?>" class="product-img card-img-top">
-                    
-                    <div class="card-body d-flex flex-column">
-                        <small class="text-primary fw-bold"><?= htmlspecialchars($p['cat_name']) ?></small>
-                        <h6 class="card-title mt-2 mb-2 fw-bold"><?= htmlspecialchars($p['name']) ?></h6>
-                        
-                        
-                        <?php if($avg): ?>
-                        <div class="mb-2 rating-stars">
-                            <?= str_repeat("★", floor($avg)) . str_repeat("☆", 5 - floor($avg)) ?>
-                            <small class="text-muted ms-1">(<?= $p['review_count'] ?>)</small>
+    <div id="latestProductsSlider" class="carousel slide slider-section" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            <?php foreach($slider_products as $key => $sp): ?>
+            <div class="carousel-item <?= $key == 0 ? 'active' : '' ?>">
+                <div class="slider-content">
+                    <div class="row w-100 align-items-center">
+                        <div class="col-md-7">
+                            <span class="badge bg-warning text-dark mb-2">NEW ARRIVAL</span>
+                            <h1 class="fw-800 display-5"><?= htmlspecialchars($sp['name']) ?></h1>
+                            <p class="lead opacity-75"><?= substr(htmlspecialchars($sp['description']), 0, 100) ?>...</p>
+                            <h3 class="fw-bold mb-4">Rs <?= number_format($sp['price']) ?></h3>
+                            <a href="product_details.php?id=<?= $sp['id'] ?>" class="btn btn-light btn-lg rounded-pill px-5 fw-bold">Shop Now</a>
                         </div>
-                        <?php endif; ?>
-
-                                            <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="h5 fw-bold text-primary mb-0">Rs <?= number_format($p['price']) ?></span>
-                        <small class="text-<?= $p['stock'] > 0 ? 'success' : 'danger' ?> fw-bold">
-                            <?= $p['stock'] > 0 ? $p['stock'].' in stock' : 'Out of Stock' ?>
-                        </small>
-                    </div>
-                    </div>
-
-                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-3">
-                        <div class="d-grid gap-2">
-                            <?php if($is_in_cart): ?>
-                                <button class="btn btn-outline-danger action-btn" onclick="updateCart(<?= $p['id'] ?>, 'remove')">
-                                    <i class="fas fa-trash-alt me-1"></i> Remove from Cart
-                                </button>
-                            <?php else: ?>
-                                <button class="btn btn-primary action-btn" onclick="updateCart(<?= $p['id'] ?>, 'add')" <?= $p['stock'] <= 0 ? 'disabled' : '' ?>>
-                                    <i class="fas fa-cart-plus me-1"></i> Add to Cart
-                                </button>
-                            <?php endif; ?>
-
-                            <a href="product_details.php?id=<?= $p['id'] ?>" class="btn btn-outline-secondary action-btn">
-                                <i class="fas fa-eye me-1"></i> View Details
-                            </a>
-
-                            <?php if($p['stock'] > 0): ?>
-                                <a href="add_review.php?product_id=<?= $p['id'] ?>" class="btn btn-outline-success action-btn">
-                                    <i class="fas fa-star me-1"></i> Add Review
-                                </a>
-                            <?php endif; ?>
+                        <div class="col-md-5 text-center d-none d-md-block">
+                            <img src="../uploads/<?= htmlspecialchars($sp['image'] ?? 'default.jpg') ?>" class="slider-img shadow-lg">
                         </div>
                     </div>
                 </div>
             </div>
             <?php endforeach; ?>
-        <?php endif; ?>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#latestProductsSlider" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#latestProductsSlider" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+        </button>
+    </div>
+
+    <div class="bg-white p-3 rounded-4 shadow-sm mb-5">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="pSearch" class="form-control border-0 shadow-none" placeholder="Search for products..." onkeyup="filterProducts()">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select id="cFilter" class="form-select border-0 shadow-none fw-600" onchange="filterProducts()">
+                    <option value="all">All Categories</option>
+                    <?php foreach($categories as $cat): ?>
+                        <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="fw-800 mb-4">Explore Our Collection</h4>
+    <div class="row g-4" id="productGrid">
+        <?php foreach($products as $p): 
+            $in_my_cart = in_array($p['id'], $in_cart);
+            $rating = $p['avg_rating'] ? round($p['avg_rating'], 1) : 0;
+        ?>
+        <div class="col-6 col-md-4 col-lg-3 product-item" data-name="<?= strtolower(htmlspecialchars($p['name'])) ?>" data-cat="<?= htmlspecialchars($p['cat_name']) ?>">
+            <div class="product-card d-flex flex-column">
+                <img src="../uploads/<?= htmlspecialchars($p['image'] ?? 'default.jpg') ?>" class="product-img">
+                <div class="p-3 flex-grow-1">
+                    <span class="badge-cat"><?= htmlspecialchars($p['cat_name']) ?></span>
+                    <h6 class="fw-bold mt-2 text-truncate"><?= htmlspecialchars($p['name']) ?></h6>
+                    <div class="text-warning small mb-2">
+                        <?= str_repeat("★", floor($rating)) . str_repeat("☆", 5 - floor($rating)) ?>
+                        <span class="text-muted ms-1">(<?= $p['review_count'] ?>)</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="price-text">Rs <?= number_format($p['price']) ?></span>
+                    </div>
+                </div>
+                <div class="p-3 pt-0">
+                    <div class="d-grid gap-2">
+                        <?php if($in_my_cart): ?>
+                            <button class="btn btn-outline-danger btn-sm rounded-pill" onclick="manageCart(<?= $p['id'] ?>, 'remove')">Remove</button>
+                        <?php else: ?>
+                            <button class="btn btn-primary btn-sm rounded-pill" onclick="manageCart(<?= $p['id'] ?>, 'add')" <?= $p['stock'] <= 0 ? 'disabled' : '' ?>>Add to Cart</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function filterProducts() {
     const search = document.getElementById('pSearch').value.toLowerCase();
@@ -173,33 +184,18 @@ function filterProducts() {
     });
 }
 
-function updateCart(productId, action) {
-    const fd = new FormData();
-    fd.append('product_id', productId);
-    fd.append('action', action);
-
-    fetch('cart_action.php', { method: 'POST', body: fd })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) { location.reload(); } 
-        else { alert('Error: ' + data.message); }
-    })
-    .catch(err => alert('Request failed. Ensure cart_action.php exists.'));
-}
-
-function toggleWishlist(id) {
+function manageCart(id, action) {
     const fd = new FormData();
     fd.append('product_id', id);
-    fetch('wishlist_action.php', { method: 'POST', body: fd })
-    .then(res => res.json())
-    .then(data => { alert(data.message); location.reload(); })
-    .catch(err => alert('Wishlist action failed.'));
+    fd.append('action', action);
+    fetch('cart_action.php', { method: 'POST', body: fd })
+    .then(res => res.json()).then(data => {
+        if(data.success) location.reload();
+        else alert(data.message);
+    });
 }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
- 
-
-
-
